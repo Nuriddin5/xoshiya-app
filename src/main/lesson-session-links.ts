@@ -66,3 +66,20 @@ export function unlinkSessionFromLessons(lessons: Lesson[], sessionId: string): 
 
   return { changed, lessons: nextLessons };
 }
+
+export function clearLessonSessionLinks(lessons: Lesson[]): LessonLinkUpdate {
+  let changed = false;
+  const nextLessons = lessons.map((lesson) => {
+    if (lesson.sessionIds.length === 0) {
+      return lesson;
+    }
+
+    changed = true;
+    return {
+      ...lesson,
+      sessionIds: [],
+    };
+  });
+
+  return { changed, lessons: nextLessons };
+}

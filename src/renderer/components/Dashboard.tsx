@@ -166,6 +166,10 @@ export function Dashboard({
     };
   }, [activeCourse?.bookIds, activeCourse?.id]);
 
+  const activeLessonSessionId = isStudySessionForLesson(session, activeCourse?.id, activeLesson?.id)
+    ? session?.id ?? null
+    : null;
+
   useEffect(() => {
     if (!activeCourse || !activeLesson) {
       setLessonSessionRecords([]);
@@ -194,7 +198,7 @@ export function Dashboard({
     return () => {
       cancelled = true;
     };
-  }, [activeCourse?.id, activeLesson?.id]);
+  }, [activeCourse?.id, activeLesson?.id, activeLessonSessionId]);
 
   const isRecorderReady = Boolean(readiness.isComplete && (rubaiRuntime?.isReady ?? false));
   const isTranscriptPolishReady = readiness.isComplete;
@@ -213,7 +217,7 @@ export function Dashboard({
   const rubaiStatusDetail = rubaiRuntime
     ? `${setupStatusMessage} ${formatRubaiWorkerDetail(rubaiRuntime)}`
     : setupStatusMessage;
-  const visibleSession = isStudySessionForLesson(session, activeCourse?.id, activeLesson?.id) ? session : null;
+  const visibleSession = activeLessonSessionId ? session : null;
   const sessionTitle = visibleSession?.title ?? 'No session available';
   const sessionSourceLabel = visibleSession ? `${visibleSession.sourceName} | ${formatTimestamp(visibleSession.startedAt)}` : 'Waiting for a recording session';
   const sessionStatusLabel = recorderSnapshot

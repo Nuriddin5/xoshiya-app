@@ -37,8 +37,6 @@ type RecorderControlsProps = {
   onTranscriptSessionReset: () => void;
 };
 
-const DEFAULT_CHUNK_SECONDS = ADAPTIVE_CHUNK_DEFAULT_SECONDS;
-
 type CaptureAttribution = {
   courseId: string | undefined;
   courseName: string | undefined;
@@ -46,6 +44,9 @@ type CaptureAttribution = {
   lessonName: string | undefined;
   sessionId: string | null;
 };
+
+const CAPTURE_ATTRIBUTION_STORAGE_PREFIX = 'recorder-session-attribution-';
+const DEFAULT_CHUNK_SECONDS = ADAPTIVE_CHUNK_DEFAULT_SECONDS;
 
 function getChunkSeconds(settings: AppSettings): number {
   if (!Number.isInteger(settings.chunkSeconds) || settings.chunkSeconds <= 0) {
@@ -274,11 +275,13 @@ export function RecorderControls({
       return;
     }
 
-    recorderSessionAttributionRef.current = {
+    const nextAttribution = readPersistedCaptureAttribution(snapshot.sessionId) ?? {
       ...createCaptureAttribution(snapshot.sessionId, activeCourse, activeLesson),
       ...pendingAttributionRef.current,
       sessionId: snapshot.sessionId,
     };
+    recorderSessionAttributionRef.current = nextAttribution;
+    persistCaptureAttribution(nextAttribution);
     pendingAttributionRef.current = null;
   }, [activeCourse, activeLesson, snapshot.sessionId]);
 
@@ -288,12 +291,12 @@ export function RecorderControls({
       : null;
 
     const nextSession = buildStudySession({
-      courseId: sessionAttribution?.courseId ?? activeCourse?.id,
-      courseName: sessionAttribution?.courseName ?? activeCourse?.name,
+      courseId: sessionAttribution?.courseId,
+      courseName: sessionAttribution?.courseName,
       endedAt: snapshot.stoppedAt,
       id: snapshot.sessionId,
-      lessonId: sessionAttribution?.lessonId ?? activeLesson?.id,
-      lessonName: sessionAttribution?.lessonName ?? activeLesson?.name,
+      lessonId: sessionAttribution?.lessonId,
+      lessonName: sessionAttribution?.lessonName,
       rawTranscript: snapshot.rawTranscriptText,
       sourceName: snapshot.sourceName,
       startedAt: snapshot.startedAt,
@@ -400,6 +403,9 @@ export function RecorderControls({
 
   function handleResetRecorder() {
     preserveSessionOnResetRef.current = true;
+    clearPersistedCaptureAttribution(snapshot.sessionId);
+    pendingAttributionRef.current = null;
+    recorderSessionAttributionRef.current = null;
     recorderRef.current?.resetSession();
   }
 
@@ -618,6 +624,71 @@ function createCaptureAttribution(
     lessonName: activeLesson?.name,
     sessionId,
   };
+}
+
+function readPersistedCaptureAttribution(sessionId: string): CaptureAttribution | null {
+  try {
+    const stored = window.localStorage.getItem(`${CAPTURE_ATTRIBUTION_STORAGE_PREFIX}${sessionId}`);
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as unknown;
+    return normalizeCaptureAttribution(parsed, sessionId);
+  } catch (error) {
+    console.warn('[recorder] failed to load persisted session attribution', error);
+    return null;
+  }
+}
+
+function persistCaptureAttribution(attribution: CaptureAttribution): void {
+  if (!attribution.sessionId) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      `${CAPTURE_ATTRIBUTION_STORAGE_PREFIX}${attribution.sessionId}`,
+      JSON.stringify(attribution),
+    );
+  } catch (error) {
+    console.warn('[recorder] failed to persist session attribution', error);
+  }
+}
+
+function clearPersistedCaptureAttribution(sessionId: string | null): void {
+  if (!sessionId) {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(`${CAPTURE_ATTRIBUTION_STORAGE_PREFIX}${sessionId}`);
+  } catch (error) {
+    console.warn('[recorder] failed to clear persisted session attribution', error);
+  }
+}
+
+function normalizeCaptureAttribution(value: unknown, sessionId: string): CaptureAttribution | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  if (candidate.sessionId !== sessionId) {
+    return null;
+  }
+
+  return {
+    courseId: normalizeOptionalString(candidate.courseId),
+    courseName: normalizeOptionalString(candidate.courseName),
+    lessonId: normalizeOptionalString(candidate.lessonId),
+    lessonName: normalizeOptionalString(candidate.lessonName),
+    sessionId,
+  };
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 type LifecycleLogItemProps = {

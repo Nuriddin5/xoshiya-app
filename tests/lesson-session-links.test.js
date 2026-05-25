@@ -125,6 +125,34 @@ test('unlinkSessionFromLessons removes deleted history sessions from lesson inde
   }
 });
 
+test('clearLessonSessionLinks removes stale session indexes after history is cleared', async () => {
+  const { cleanup, module } = await importTranspiledTsModule('src/main/lesson-session-links.ts');
+
+  try {
+    const update = module.clearLessonSessionLinks([
+      {
+        courseId: 'course-1',
+        createdAt: 1,
+        id: 'lesson-1',
+        name: 'Lesson 1',
+        sessionIds: ['session-1', 'session-2'],
+      },
+      {
+        courseId: 'course-1',
+        createdAt: 2,
+        id: 'lesson-2',
+        name: 'Lesson 2',
+        sessionIds: [],
+      },
+    ]);
+
+    assert.equal(update.changed, true);
+    assert.deepEqual(update.lessons.map((lesson) => lesson.sessionIds), [[], []]);
+  } finally {
+    cleanup();
+  }
+});
+
 test('buildSelectedLessonTranscript combines selected parts and live transcript in order', async () => {
   const { cleanup, module } = await importTranspiledTsModule('src/shared/lesson-session-selection.ts');
 

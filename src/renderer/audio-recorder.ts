@@ -486,12 +486,12 @@ export class AudioRecorder {
     }
 
     if (typeof MediaRecorder === 'undefined') {
-      this.fail(new Error('MediaRecorder is unavailable in this renderer.'));
+      this.failResume(new Error('MediaRecorder is unavailable in this renderer.'));
       return;
     }
 
     if (!this.snapshot.sourceId || !this.snapshot.sourceName) {
-      this.fail(new Error('Cannot resume because the previous desktop source is unavailable.'));
+      this.failResume(new Error('Cannot resume because the previous desktop source is unavailable.'));
       return;
     }
 
@@ -537,7 +537,7 @@ export class AudioRecorder {
         void this.stop();
       }
     } catch (error) {
-      this.fail(error instanceof Error ? error : new Error('Failed to resume audio recording.'));
+      this.failResume(error instanceof Error ? error : new Error('Failed to resume audio recording.'));
     }
   }
 
@@ -825,6 +825,27 @@ export class AudioRecorder {
     this.addEvent('error', error.message, null);
     this.stopResolver?.();
     this.stopResolver = null;
+  }
+
+  private failResume(error: Error): void {
+    this.cleanupStreams();
+    this.recorder = null;
+    this.recorderStopMode = null;
+    this.pendingStop = false;
+    this.stopBoundaryTracking();
+    this.clearChunkRotationTimer();
+    this.activeChunkBoundaryDebug = null;
+    this.activeChunkIndex = null;
+    this.activeChunkStartedAt = null;
+    this.activeChunkId = null;
+    this.patch({
+      currentChunkIndex: null,
+      currentChunkStartedAt: null,
+      errorMessage: error.message,
+      status: 'paused',
+      statusMessage: `Resume failed. ${error.message}`,
+    });
+    this.addEvent('error', `Resume failed. ${error.message}`, null);
   }
 
   private recoverPersistedTranscriptWork(): void {

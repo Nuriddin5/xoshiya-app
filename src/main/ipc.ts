@@ -38,7 +38,13 @@ import {
   saveSessionHistory,
   validateSessionExportPayload,
 } from './session-export.js';
-import { linkSessionToLesson, repairLessonSessionLinks, unlinkSessionFromLessons, type SessionLessonLink } from './lesson-session-links.js';
+import {
+  clearLessonSessionLinks,
+  linkSessionToLesson,
+  repairLessonSessionLinks,
+  unlinkSessionFromLessons,
+  type SessionLessonLink,
+} from './lesson-session-links.js';
 import { getRubaiRuntimeStatus, transcribeWithRubai, validateRubaiRuntime } from './rubai-runner.js';
 import { randomUUID } from 'node:crypto';
 import {
@@ -384,9 +390,13 @@ export function registerIpcHandlers(store: StudyCaptureStore, desktopShellHandle
       writeStoreLessons(store, update.lessons);
     }
   });
-  ipcMain.handle(IPC_CHANNELS.clearSessionHistory, () => {
+  ipcMain.handle(IPC_CHANNELS.clearSessionHistory, async () => {
     const settings = readSettings(store);
-    return clearSessionHistory(getActiveSaveFolder(settings));
+    await clearSessionHistory(getActiveSaveFolder(settings));
+    const update = clearLessonSessionLinks(listStoreLessons(store));
+    if (update.changed) {
+      writeStoreLessons(store, update.lessons);
+    }
   });
   ipcMain.handle(IPC_CHANNELS.transcribeAudio, async (_event, audioPath: unknown, metadata: unknown): Promise<string> => {
     if (typeof audioPath !== 'string' || audioPath.trim().length === 0) {

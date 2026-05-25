@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.12 - 2026-05-25
+
+- Kept paused recorder sessions resumable when reconnecting to the desktop source or ASR runtime fails, preserving the existing session and recorded chunks for another resume attempt.
+- Persisted recorder course and lesson attribution so refreshed or resumed sessions keep their original lesson instead of adopting the currently selected lesson.
+- Cleared stale lesson session indexes when autosaved history is cleared and refreshed lesson session parts when a new session starts.
+
 ## 1.1.11 - 2026-05-25
 
 - Added Windows taskbar progress and title text fallbacks so recording, paused, and stopping states remain visible even when Windows does not render overlay badges.
