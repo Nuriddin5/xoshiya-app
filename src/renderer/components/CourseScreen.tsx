@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { BookMarked, GraduationCap, LayoutList, Plus, Trash2, Upload } from 'lucide-react';
-import type { BookDocument, Course, Lesson } from '../../shared/types.js';
+import { ArrowDown, ArrowUp, BookMarked, GraduationCap, LayoutList, MoveRight, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
+import type { BookDocument, Course, Lesson, LessonSessionRecord } from '../../shared/types.js';
 
 type CourseScreenProps = {
   activeCourse: Course | null;
@@ -27,7 +27,12 @@ export function CourseScreen({
   const [isCreatingLesson, setIsCreatingLesson] = useState(false);
   const [isImportingSource, setIsImportingSource] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [lessonSessionRecords, setLessonSessionRecords] = useState<LessonSessionRecord[]>([]);
+  const [sessionActionId, setSessionActionId] = useState<string | null>(null);
+  const [sessionOrganizerError, setSessionOrganizerError] = useState<string | null>(null);
+  const [sessionOrganizerMessage, setSessionOrganizerMessage] = useState<string | null>(null);
   const [sourceStatus, setSourceStatus] = useState<string | null>(null);
+  const [targetLessonBySession, setTargetLessonBySession] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +66,46 @@ export function CourseScreen({
 
     return () => { cancelled = true; };
   }, [activeCourse]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLessonSessions() {
+      if (!activeCourse || !activeLesson) {
+        setLessonSessionRecords([]);
+        setSessionOrganizerError(null);
+        setSessionOrganizerMessage(null);
+        return;
+      }
+
+      try {
+        const records = await window.studyCapture?.listLessonSessionRecords({
+          courseId: activeCourse.id,
+          lessonId: activeLesson.id,
+        }) ?? [];
+        if (!cancelled) {
+          setLessonSessionRecords(records);
+          setSessionOrganizerError(null);
+          setTargetLessonBySession((current) => {
+            const next: Record<string, string> = {};
+            for (const record of records) {
+              next[record.sessionId] = current[record.sessionId] ?? activeLesson.id;
+            }
+            return next;
+          });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setLessonSessionRecords([]);
+          setSessionOrganizerError(err instanceof Error ? err.message : 'Failed to load lesson sessions');
+        }
+      }
+    }
+
+    void loadLessonSessions();
+
+    return () => { cancelled = true; };
+  }, [activeCourse?.id, activeLesson?.id]);
 
   async function handleCreateCourse() {
     if (!newCourseName.trim()) return;
@@ -127,6 +172,96 @@ export function CourseScreen({
       }
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : 'Failed to delete lesson');
+    }
+  }
+
+  async function refreshActiveLessonState(nextActiveLessonId = activeLesson?.id) {
+    if (!activeCourse || !window.studyCapture) return;
+
+    const nextLessons = await window.studyCapture.listLessons(activeCourse.id);
+    setLessons(nextLessons);
+
+    if (nextActiveLessonId) {
+      const nextActiveLesson = nextLessons.find((lesson) => lesson.id === nextActiveLessonId) ?? null;
+      onSelectLesson(nextActiveLesson);
+      if (nextActiveLesson) {
+        const records = await window.studyCapture.listLessonSessionRecords({
+          courseId: activeCourse.id,
+          lessonId: nextActiveLesson.id,
+        });
+        setLessonSessionRecords(records);
+      } else {
+        setLessonSessionRecords([]);
+      }
+    }
+  }
+
+  async function handleRefreshLessonSessions() {
+    try {
+      setSessionOrganizerError(null);
+      setSessionOrganizerMessage(null);
+      await refreshActiveLessonState();
+    } catch (err) {
+      setSessionOrganizerError(err instanceof Error ? err.message : 'Failed to refresh lesson sessions');
+    }
+  }
+
+  async function handleMoveLessonSession(sessionId: string) {
+    if (!activeCourse || !activeLesson || !window.studyCapture?.attachSessionHistoryToLesson) return;
+
+    const targetLessonId = targetLessonBySession[sessionId] ?? activeLesson.id;
+    if (!targetLessonId || targetLessonId === activeLesson.id) return;
+
+    const targetLesson = lessons.find((lesson) => lesson.id === targetLessonId);
+    if (!targetLesson) return;
+
+    try {
+      setSessionActionId(sessionId);
+      setSessionOrganizerError(null);
+      setSessionOrganizerMessage(null);
+      await window.studyCapture.attachSessionHistoryToLesson({
+        courseId: activeCourse.id,
+        lessonId: targetLesson.id,
+        sessionId,
+      });
+      await refreshActiveLessonState(activeLesson.id);
+      setSessionOrganizerMessage(`Session moved to ${targetLesson.name}.`);
+    } catch (err) {
+      setSessionOrganizerError(err instanceof Error ? err.message : 'Failed to move session');
+    } finally {
+      setSessionActionId(null);
+    }
+  }
+
+  async function handleReorderLessonSession(sessionId: string, direction: -1 | 1) {
+    if (!activeCourse || !activeLesson || !window.studyCapture?.updateLessonSessionOrder) return;
+
+    const currentIndex = lessonSessionRecords.findIndex((record) => record.sessionId === sessionId);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= lessonSessionRecords.length) return;
+
+    const nextRecords = [...lessonSessionRecords];
+    const [movedRecord] = nextRecords.splice(currentIndex, 1);
+    if (!movedRecord) return;
+    nextRecords.splice(nextIndex, 0, movedRecord);
+
+    try {
+      setSessionActionId(sessionId);
+      setSessionOrganizerError(null);
+      setSessionOrganizerMessage(null);
+      const updatedLesson = await window.studyCapture.updateLessonSessionOrder({
+        courseId: activeCourse.id,
+        lessonId: activeLesson.id,
+        sessionIds: nextRecords.map((record) => record.sessionId),
+      });
+      setLessonSessionRecords(nextRecords);
+      setLessons((current) => current.map((lesson) => (lesson.id === updatedLesson.id ? updatedLesson : lesson)));
+      onSelectLesson(updatedLesson);
+      setSessionOrganizerMessage('Lesson session order updated.');
+    } catch (err) {
+      setSessionOrganizerError(err instanceof Error ? err.message : 'Failed to update session order');
+    } finally {
+      setSessionActionId(null);
     }
   }
 
@@ -333,6 +468,89 @@ export function CourseScreen({
                 )}
               </section>
 
+              <section className="detail-section lesson-session-organizer">
+                <div className="section-title">
+                  <MoveRight size={18} />
+                  <h3>Lesson Sessions</h3>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => void handleRefreshLessonSessions()}
+                    title="Refresh lesson sessions"
+                  >
+                    <RefreshCw size={18} />
+                  </button>
+                </div>
+
+                {!activeLesson ? (
+                  <div className="empty-state-mini">Select a lesson to move sessions and set transcript order.</div>
+                ) : lessonSessionRecords.length === 0 ? (
+                  <div className="empty-state-mini">No autosaved sessions are attached to this lesson yet.</div>
+                ) : (
+                  <div className="lesson-session-list">
+                    {lessonSessionRecords.map((record, index) => {
+                      const targetLessonId = targetLessonBySession[record.sessionId] ?? activeLesson.id;
+                      const isBusy = sessionActionId === record.sessionId;
+
+                      return (
+                        <article key={record.sessionId} className="lesson-session-card">
+                          <div className="lesson-session-copy">
+                            <strong>{record.title}</strong>
+                            <span>{formatLessonSessionDate(record.date)} | {record.rawTranscript.trim().length.toLocaleString()} chars</span>
+                            <small>{record.sessionId}</small>
+                          </div>
+                          <div className="lesson-session-actions">
+                            <button
+                              type="button"
+                              className="session-order-button"
+                              disabled={index === 0 || isBusy}
+                              onClick={() => void handleReorderLessonSession(record.sessionId, -1)}
+                              title="Move up"
+                            >
+                              <ArrowUp size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="session-order-button"
+                              disabled={index === lessonSessionRecords.length - 1 || isBusy}
+                              onClick={() => void handleReorderLessonSession(record.sessionId, 1)}
+                              title="Move down"
+                            >
+                              <ArrowDown size={15} />
+                            </button>
+                            <select
+                              value={targetLessonId}
+                              disabled={isBusy}
+                              onChange={(event) => {
+                                setTargetLessonBySession((current) => ({
+                                  ...current,
+                                  [record.sessionId]: event.target.value,
+                                }));
+                              }}
+                            >
+                              {lessons.map((lesson) => (
+                                <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="compact-move-button"
+                              disabled={isBusy || !targetLessonId || targetLessonId === activeLesson.id}
+                              onClick={() => void handleMoveLessonSession(record.sessionId)}
+                            >
+                              {isBusy ? 'Moving...' : 'Move'}
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {sessionOrganizerMessage ? <div className="inline-notice success">{sessionOrganizerMessage}</div> : null}
+                {sessionOrganizerError ? <div className="inline-notice danger">{sessionOrganizerError}</div> : null}
+              </section>
+
               <section className="detail-section">
                 <div className="section-title">
                   <BookMarked size={18} />
@@ -383,4 +601,16 @@ export function CourseScreen({
       </main>
     </div>
   );
+}
+
+function formatLessonSessionDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown date';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 }

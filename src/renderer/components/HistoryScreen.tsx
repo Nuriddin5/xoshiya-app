@@ -78,8 +78,8 @@ export function HistoryScreen({ activeSaveFolder, storageEnvironment }: HistoryS
           setSavedSessions(nextSavedSessions);
           setCourses(nextCourses);
           setLessonsByCourseId(nextLessonsByCourseId);
-          setSelectedCourseBySession((current) => seedCourseSelections(current, nextHistorySessions, nextCourses));
-          setSelectedLessonBySession((current) => seedLessonSelections(current, nextHistorySessions, nextLessonsByCourseId));
+          setSelectedCourseBySession((current) => seedCourseSelections(current, nextHistorySessions));
+          setSelectedLessonBySession((current) => seedLessonSelections(current, nextHistorySessions));
           setLoadState('ready');
         }
       } catch (loadError) {
@@ -156,21 +156,19 @@ export function HistoryScreen({ activeSaveFolder, storageEnvironment }: HistoryS
   }
 
   function getSelectedCourseId(session: SessionExportSummary): string {
-    return selectedCourseBySession[session.sessionId] ?? session.courseId ?? courses[0]?.id ?? '';
+    return selectedCourseBySession[session.sessionId] ?? session.courseId ?? '';
   }
 
   function getSelectedLessonId(session: SessionExportSummary): string {
     const selectedCourseId = getSelectedCourseId(session);
     return selectedLessonBySession[session.sessionId]
       ?? (session.courseId === selectedCourseId ? session.lessonId : undefined)
-      ?? lessonsByCourseId[selectedCourseId]?.[0]?.id
       ?? '';
   }
 
   function handleCourseSelection(session: SessionExportSummary, courseId: string) {
-    const firstLessonId = lessonsByCourseId[courseId]?.[0]?.id ?? '';
     setSelectedCourseBySession((current) => ({ ...current, [session.sessionId]: courseId }));
-    setSelectedLessonBySession((current) => ({ ...current, [session.sessionId]: firstLessonId }));
+    setSelectedLessonBySession((current) => ({ ...current, [session.sessionId]: '' }));
   }
 
   async function attachHistorySession(session: SessionExportSummary): Promise<void> {
@@ -358,11 +356,9 @@ export function HistoryScreen({ activeSaveFolder, storageEnvironment }: HistoryS
 function seedCourseSelections(
   current: Record<string, string>,
   sessions: SessionExportSummary[],
-  courses: Course[],
 ): Record<string, string> {
-  const fallbackCourseId = courses[0]?.id ?? '';
   return sessions.reduce<Record<string, string>>((next, session) => {
-    next[session.sessionId] = current[session.sessionId] ?? session.courseId ?? fallbackCourseId;
+    next[session.sessionId] = current[session.sessionId] ?? session.courseId ?? '';
     return next;
   }, {});
 }
@@ -370,13 +366,10 @@ function seedCourseSelections(
 function seedLessonSelections(
   current: Record<string, string>,
   sessions: SessionExportSummary[],
-  lessonsByCourseId: Record<string, Lesson[]>,
 ): Record<string, string> {
   return sessions.reduce<Record<string, string>>((next, session) => {
-    const courseId = session.courseId ?? Object.keys(lessonsByCourseId)[0] ?? '';
     next[session.sessionId] = current[session.sessionId]
       ?? session.lessonId
-      ?? lessonsByCourseId[courseId]?.[0]?.id
       ?? '';
     return next;
   }, {});
@@ -529,7 +522,7 @@ function AttachmentControls({
             onChange={(event) => onCourseChange(event.target.value)}
             className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white outline-none transition focus:border-cyan-300/40"
           >
-            {courses.length === 0 ? <option value="">No courses</option> : null}
+            <option value="">{courses.length === 0 ? 'No courses' : 'Choose course...'}</option>
             {courses.map((course) => (
               <option key={course.id} value={course.id}>{course.name}</option>
             ))}
@@ -543,7 +536,7 @@ function AttachmentControls({
             onChange={(event) => onLessonChange(event.target.value)}
             className="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white outline-none transition focus:border-cyan-300/40"
           >
-            {lessons.length === 0 ? <option value="">No lessons in course</option> : null}
+            <option value="">{lessons.length === 0 ? 'No lessons in course' : 'Choose lesson...'}</option>
             {lessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>{lesson.name}</option>
             ))}

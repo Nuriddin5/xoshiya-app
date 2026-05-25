@@ -302,6 +302,56 @@ test('lesson session records are sorted by date and include raw transcript', asy
   }
 });
 
+test('lesson session records follow stored lesson order when session IDs are provided', async () => {
+  const { cleanup, module } = await importSessionExportModule();
+  const saveFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'xoshiya-lesson-session-record-order-'));
+
+  try {
+    await module.saveSessionHistory(module.validateSessionExportPayload({
+      bookContextUsed: [],
+      correctedTranscript: '',
+      courseId: 'course-1',
+      courseName: 'Course',
+      detectedTopics: [],
+      endedAt: 2,
+      id: 'first',
+      lessonId: 'lesson-1',
+      lessonName: 'Lesson 1',
+      polishingResult: null,
+      rawTranscript: 'First transcript',
+      reviewItems: [],
+      sourceName: 'Screen',
+      startedAt: 1,
+      summary: '',
+      title: 'First',
+    }), saveFolder);
+    await module.saveSessionHistory(module.validateSessionExportPayload({
+      bookContextUsed: [],
+      correctedTranscript: '',
+      courseId: 'course-1',
+      courseName: 'Course',
+      detectedTopics: [],
+      endedAt: 4,
+      id: 'second',
+      lessonId: 'lesson-1',
+      lessonName: 'Lesson 1',
+      polishingResult: null,
+      rawTranscript: 'Second transcript',
+      reviewItems: [],
+      sourceName: 'Screen',
+      startedAt: 3,
+      summary: '',
+      title: 'Second',
+    }), saveFolder);
+
+    const records = await module.readLessonSessionRecords(saveFolder, 'course-1', 'lesson-1', ['second', 'first']);
+    assert.deepEqual(records.map((record) => record.sessionId), ['second', 'first']);
+  } finally {
+    cleanup();
+    fs.rmSync(saveFolder, { recursive: true, force: true });
+  }
+});
+
 test('session history lesson links can be read for store repair', async () => {
   const { cleanup, module } = await importSessionExportModule();
   const saveFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'xoshiya-session-history-links-'));

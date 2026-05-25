@@ -463,6 +463,7 @@ export async function readLessonSessionRecords(
 ): Promise<LessonSessionRecord[]> {
   await pruneExpiredSessionHistory(saveFolder);
   const sessionIdSet = new Set(sessionIds);
+  const sessionIdOrder = new Map(sessionIds.map((sessionId, index) => [sessionId, index]));
   const historyFolder = getSessionHistoryFolder(saveFolder);
   const records = await readSessionRecordsFromFolder(historyFolder);
 
@@ -482,7 +483,16 @@ export async function readLessonSessionRecords(
         summary: record.summary,
       };
     })
-    .sort((left, right) => parseTimestamp(left.date) - parseTimestamp(right.date));
+    .sort((left, right) => {
+      const leftOrder = sessionIdOrder.get(left.sessionId);
+      const rightOrder = sessionIdOrder.get(right.sessionId);
+
+      if (leftOrder !== undefined || rightOrder !== undefined) {
+        return (leftOrder ?? Number.MAX_SAFE_INTEGER) - (rightOrder ?? Number.MAX_SAFE_INTEGER);
+      }
+
+      return parseTimestamp(left.date) - parseTimestamp(right.date);
+    });
 }
 
 export function validateSessionExportPayload(payload: unknown): StudySession {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.13 - 2026-05-25
+
+- Added a lesson session organizer in Courses so attached sessions can be moved to another lesson and reordered inside the selected lesson.
+- Made lesson transcript loading honor the stored lesson session order instead of always falling back to recording timestamps.
+- Stopped History from defaulting unattached sessions to the first course and lesson, preventing accidental first-lesson attachments.
+
 ## 1.1.12 - 2026-05-25
 
 - Kept paused recorder sessions resumable when reconnecting to the desktop source or ASR runtime fails, preserving the existing session and recorded chunks for another resume attempt.

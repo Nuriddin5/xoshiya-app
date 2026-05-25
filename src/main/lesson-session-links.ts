@@ -11,6 +11,14 @@ export type LessonLinkUpdate = {
   lessons: Lesson[];
 };
 
+export type LessonSessionOrderUpdate = LessonLinkUpdate & {
+  lesson: Lesson | null;
+};
+
+function uniqueSessionIds(sessionIds: string[]): string[] {
+  return [...new Set(sessionIds.map((sessionId) => sessionId.trim()).filter(Boolean))];
+}
+
 export function linkSessionToLesson(lessons: Lesson[], link: SessionLessonLink): LessonLinkUpdate {
   let changed = false;
   const nextLessons = lessons.map((lesson) => {
@@ -38,6 +46,36 @@ export function linkSessionToLesson(lessons: Lesson[], link: SessionLessonLink):
   });
 
   return { changed, lessons: nextLessons };
+}
+
+export function reorderLessonSessions(
+  lessons: Lesson[],
+  payload: { courseId: string; lessonId: string; sessionIds: string[] },
+): LessonSessionOrderUpdate {
+  let changed = false;
+  let updatedLesson: Lesson | null = null;
+  const requestedSessionIds = uniqueSessionIds(payload.sessionIds);
+
+  const nextLessons = lessons.map((lesson) => {
+    if (lesson.id !== payload.lessonId || lesson.courseId !== payload.courseId) {
+      return lesson;
+    }
+
+    const currentSessionIdSet = new Set(lesson.sessionIds);
+    const orderedSessionIds = [
+      ...requestedSessionIds.filter((sessionId) => currentSessionIdSet.has(sessionId)),
+      ...lesson.sessionIds.filter((sessionId) => !requestedSessionIds.includes(sessionId)),
+    ];
+
+    const isSameOrder = orderedSessionIds.length === lesson.sessionIds.length
+      && orderedSessionIds.every((sessionId, index) => sessionId === lesson.sessionIds[index]);
+
+    updatedLesson = isSameOrder ? lesson : { ...lesson, sessionIds: orderedSessionIds };
+    changed = changed || !isSameOrder;
+    return updatedLesson;
+  });
+
+  return { changed, lesson: updatedLesson, lessons: nextLessons };
 }
 
 export function repairLessonSessionLinks(lessons: Lesson[], links: SessionLessonLink[]): LessonLinkUpdate {
