@@ -1,0 +1,90 @@
+{
+  "name": "xoshiya-app",
+  "version": "1.1.11",
+  "type": "module",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win portable && node scripts/prepare-portable-runtime.cjs",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip",
+    "dist:portable": "npm run dist:win",
+    "preview": "electron-vite preview",
+    "typecheck": "npm run typecheck:renderer && npm run typecheck:main && npm run typecheck:preload",
+    "typecheck:renderer": "tsc -p tsconfig.renderer.json --noEmit",
+    "typecheck:main": "tsc -p tsconfig.main.json --noEmit",
+    "typecheck:preload": "tsc -p tsconfig.preload.json --noEmit",
+    "test": "node --test"
+  },
+  "author": "",
+  "license": "MIT",
+  "description": "Local-first desktop app for lesson capture, Rubai transcription, and book-grounded study notes.",
+  "build": {
+    "appId": "uz.xoshiya.app",
+    "productName": "Xoshiya App",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "build/icon.ico",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "rubai_worker.py"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education",
+      "hardenedRuntime": false,
+      "identity": null
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0",
+    "lucide-react": "^1.14.0",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^2.4.5",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.31",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  }
+}
