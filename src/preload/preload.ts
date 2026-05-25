@@ -62,6 +62,8 @@ const api: StudyCaptureApi = {
     ipcRenderer.invoke(IPC_CHANNELS.openSessionExportMarkdown, markdownPath) as Promise<void>,
   attachSessionHistoryToLesson: (payload) =>
     ipcRenderer.invoke(IPC_CHANNELS.attachSessionHistoryToLesson, payload) as Promise<SessionExportResult>,
+  updateLessonSessionOrder: (payload) =>
+    ipcRenderer.invoke(IPC_CHANNELS.updateLessonSessionOrder, payload) as Promise<Lesson>,
   saveSessionDraft: (session: StudySession) =>
     ipcRenderer.invoke(IPC_CHANNELS.saveSessionDraft, session) as Promise<SessionExportResult>,
   saveSessionHistory: (session: StudySession) =>

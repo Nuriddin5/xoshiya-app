@@ -104,6 +104,32 @@ test('repairLessonSessionLinks backfills missing session IDs from history links'
   }
 });
 
+test('reorderLessonSessions stores lesson session order without moving unknown sessions in', async () => {
+  const { cleanup, module } = await importTranspiledTsModule('src/main/lesson-session-links.ts');
+
+  try {
+    const update = module.reorderLessonSessions([
+      {
+        courseId: 'course-1',
+        createdAt: 1,
+        id: 'lesson-1',
+        name: 'Lesson 1',
+        sessionIds: ['session-1', 'session-2', 'session-3'],
+      },
+    ], {
+      courseId: 'course-1',
+      lessonId: 'lesson-1',
+      sessionIds: ['session-3', 'unknown-session', 'session-1'],
+    });
+
+    assert.equal(update.changed, true);
+    assert.equal(update.lesson.id, 'lesson-1');
+    assert.deepEqual(update.lessons[0].sessionIds, ['session-3', 'session-1', 'session-2']);
+  } finally {
+    cleanup();
+  }
+});
+
 test('unlinkSessionFromLessons removes deleted history sessions from lesson indexes', async () => {
   const { cleanup, module } = await importTranspiledTsModule('src/main/lesson-session-links.ts');
 

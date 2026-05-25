@@ -41,6 +41,7 @@ import {
 import {
   clearLessonSessionLinks,
   linkSessionToLesson,
+  reorderLessonSessions,
   repairLessonSessionLinks,
   unlinkSessionFromLessons,
   type SessionLessonLink,
@@ -336,6 +337,34 @@ export function registerIpcHandlers(store: StudyCaptureStore, desktopShellHandle
     });
 
     return result;
+  });
+  ipcMain.handle(IPC_CHANNELS.updateLessonSessionOrder, async (_event, payload: unknown) => {
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+      throw new Error('Expected lesson session order payload.');
+    }
+
+    const candidate = payload as Record<string, unknown>;
+    const courseId = typeof candidate.courseId === 'string' ? candidate.courseId.trim() : '';
+    const lessonId = typeof candidate.lessonId === 'string' ? candidate.lessonId.trim() : '';
+    const sessionIds = Array.isArray(candidate.sessionIds)
+      ? candidate.sessionIds.filter((sessionId): sessionId is string => typeof sessionId === 'string')
+      : [];
+
+    if (!courseId || !lessonId) {
+      throw new Error('Course and lesson IDs are required to update lesson session order.');
+    }
+
+    await repairStoreLessonSessionLinksFromHistory(store);
+    const update = reorderLessonSessions(listStoreLessons(store), { courseId, lessonId, sessionIds });
+    if (!update.lesson) {
+      throw new Error('Lesson not found for the selected course.');
+    }
+
+    if (update.changed) {
+      writeStoreLessons(store, update.lessons);
+    }
+
+    return update.lesson;
   });
   ipcMain.handle(IPC_CHANNELS.saveSessionDraft, (_event, payload: unknown) => {
     const session = validateSessionExportPayload(payload);

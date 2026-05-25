@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   openSessionExportFolder: 'study-capture:open-session-export-folder',
   openSessionExportMarkdown: 'study-capture:open-session-export-markdown',
   attachSessionHistoryToLesson: 'study-capture:attach-session-history-to-lesson',
+  updateLessonSessionOrder: 'study-capture:update-lesson-session-order',
   saveSessionDraft: 'study-capture:save-session-draft',
   saveSessionHistory: 'study-capture:save-session-history',
   saveAudioChunk: 'study-capture:save-audio-chunk',

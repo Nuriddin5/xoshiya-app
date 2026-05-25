@@ -304,6 +304,7 @@ export type StudyCaptureApi = {
   openSessionExportFolder: (folderPath: string) => Promise<void>;
   openSessionExportMarkdown: (markdownPath: string) => Promise<void>;
   attachSessionHistoryToLesson: (payload: { courseId: string; lessonId: string; sessionId: string }) => Promise<SessionExportResult>;
+  updateLessonSessionOrder: (payload: { courseId: string; lessonId: string; sessionIds: string[] }) => Promise<Lesson>;
   saveSessionDraft: (session: StudySession) => Promise<SessionExportResult>;
   saveSessionHistory: (session: StudySession) => Promise<SessionExportResult>;
   saveSessionExport: (session: StudySession) => Promise<SessionExportResult>;

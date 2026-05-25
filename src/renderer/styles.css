@@ -1679,6 +1679,108 @@ textarea::placeholder {
   gap: 10px;
 }
 
+.lesson-session-organizer {
+  grid-column: 1 / -1;
+}
+
+.lesson-session-list {
+  display: grid;
+  gap: 10px;
+}
+
+.lesson-session-card {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.lesson-session-copy {
+  min-width: 0;
+}
+
+.lesson-session-copy strong,
+.lesson-session-copy span,
+.lesson-session-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-session-copy strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.lesson-session-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.lesson-session-copy small {
+  color: var(--faint);
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.lesson-session-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.lesson-session-actions select {
+  background: color-mix(in srgb, var(--bg) 54%, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  min-height: 36px;
+  min-width: 180px;
+  outline: 0;
+  padding: 0 10px;
+}
+
+.session-order-button,
+.compact-move-button {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.session-order-button {
+  align-items: center;
+  background: var(--surface-3);
+  color: var(--text);
+  display: inline-flex;
+  justify-content: center;
+  width: 36px;
+}
+
+.compact-move-button {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
+  padding: 0 12px;
+}
+
+.session-order-button:disabled,
+.compact-move-button:disabled,
+.lesson-session-actions select:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .book-toggle {
   align-items: center;
   cursor: pointer;
